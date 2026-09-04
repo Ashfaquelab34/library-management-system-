@@ -1,10 +1,68 @@
-<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>My Profile — Library Management System</title><link rel="stylesheet" href="/assets/css/app.css"><script src="/assets/js/app.js"></script></head><body><div class="app-shell"><aside class="sidebar"><div class="brand"><div class="brand-mark">L</div><div><strong>Library Management System</strong><small>Account</small></div></div><nav class="nav"><a href="/dashboard">⌂ Dashboard</a><a href="/books">▣ Browse Books</a><a data-member-only href="/my-books">📚 My Issues</a><a href="/reservations">🔖 My Reservations</a><a href="/fines">₹ My Fine</a><a data-librarian-only href="/members">♙ Members</a><a data-librarian-only href="/reports">▥ Reports</a><a data-librarian-only href="/settings">⚙ Settings</a><a class="active" href="/profile">👤 My Profile</a></nav></aside><main class="main"><header class="topbar"><h1>My Profile</h1><button class="btn btn-danger" data-logout>Logout</button></header><section class="content"><div class="page-title"><h2>Account details</h2><p>View or edit your own profile and change your password.</p></div><div class="grid layout-2"><div class="card"><form id="form" class="form-grid"><div class="field full"><label>Full name</label><input id="name" required></div><div class="field"><label>Email</label><input id="email" disabled></div><div class="field"><label>Phone</label><input id="phone"></div><div class="field"><label>Role</label><input id="role" disabled></div><div class="field" data-member-only><label>Member ID</label><input id="sid" disabled></div><div class="field" data-member-only><label>Member type</label><input id="type" disabled></div><div class="field full"><label>Address</label><input id="address"></div><div class="field full"><button class="btn btn-primary">Save changes</button></div></form></div><div class="card"><h2>Change password</h2><form id="pw" class="form-grid"><div class="field full"><label>Current password</label><input id="old" type="password" required></div><div class="field full"><label>New password</label><input id="newp" type="password" minlength="8" required></div><div class="field full"><label>Confirm new password</label><input id="confirm" type="password" minlength="8" required></div><div class="field full"><button class="btn btn-primary">Change password</button></div></form></div></div></section></main></div><div id="toast" class="toast"></div>
-  <script>
-App.ready.then(async () => {
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>My Profile — Library Management System</title>
+<link rel="stylesheet" href="/assets/css/app.css">
+<script src="/assets/js/app.js"></script>
+</head>
+<body>
+<div class="app-shell">
+<aside class="sidebar">
+<div class="brand"><div class="brand-mark">L</div><div><strong>Library Management System</strong><small>Account</small></div></div>
+<nav class="nav">
+<a href="/dashboard">⌂ Dashboard</a>
+<a href="/books">▣ Browse Books</a>
+<a data-member-only href="/my-books">📚 My Issues</a>
+<a href="/reservations">🔖 My Reservations</a>
+<a href="/fines">₹ My Fine</a>
+<a data-librarian-only href="/members">♙ Members</a>
+<a data-librarian-only href="/reports">▥ Reports</a>
+<a data-librarian-only href="/settings">⚙ Settings</a>
+<a class="active" href="/profile">👤 My Profile</a>
+</nav>
+</aside>
 
+<main class="main">
+<header class="topbar"><h1>My Profile</h1><button type="button" class="btn btn-danger" data-logout>Logout</button></header>
+
+<section class="content">
+<div class="page-title"><h2>Account details</h2><p>View or edit your own profile and change your password.</p></div>
+
+<div class="grid layout-2">
+<div class="card">
+<form id="form" class="form-grid">
+<div class="field full"><label for="name">Full name</label><input id="name" type="text" autocomplete="name" required></div>
+<div class="field"><label for="email">Email</label><input id="email" type="email" disabled></div>
+<div class="field"><label for="phone">Phone</label><input id="phone" type="text" autocomplete="tel"></div>
+<div class="field"><label for="role">Role</label><input id="role" disabled></div>
+<div class="field" data-member-only><label for="sid">Member ID</label><input id="sid" disabled></div>
+<div class="field" data-member-only><label for="type">Member type</label><input id="type" disabled></div>
+<div class="field full"><label for="address">Address</label><input id="address" type="text" autocomplete="street-address"></div>
+<div class="field full"><button type="submit" class="btn btn-primary" id="saveProfileBtn">Save changes</button></div>
+</form>
+</div>
+
+<div class="card">
+<h2>Change password</h2>
+<form id="pw" class="form-grid">
+<div class="field full"><label for="old">Current password</label><input id="old" type="password" autocomplete="current-password" required></div>
+<div class="field full"><label for="newp">New password</label><input id="newp" type="password" minlength="8" autocomplete="new-password" required></div>
+<div class="field full"><label for="confirm">Confirm new password</label><input id="confirm" type="password" minlength="8" autocomplete="new-password" required></div>
+<div class="field full"><button type="submit" class="btn btn-primary" id="changePasswordBtn">Change password</button></div>
+</form>
+</div>
+</div>
+</section>
+</main>
+</div>
+<div id="toast" class="toast"></div>
+
+<script>
+App.ready.then(async () => {
     if (!App.guard()) return;
 
-    // Get elements safely — don't use global names like name, email, old, newp
     const profileForm = document.getElementById('form');
     const passwordForm = document.getElementById('pw');
 
@@ -20,246 +78,127 @@ App.ready.then(async () => {
     const newPasswordInput = document.getElementById('newp');
     const confirmPasswordInput = document.getElementById('confirm');
 
-    // =========================
-    // LOAD PROFILE
-    // =========================
     async function loadProfile() {
         try {
-            const response = await App.req('profile');
+            const response = await App.req('profile', { method: 'GET' });
             const u = response.user || {};
 
-            nameInput.value = u.full_name || '';
-            emailInput.value = u.email || '';
-            phoneInput.value = u.phone || '';
-
-            roleInput.value =
-                u.role === 'assistant'
-                    ? 'Librarian'
-                    : 'Member';
-
+            nameInput.value = String(u.full_name ?? u.name ?? '').trim();
+            emailInput.value = u.email ?? '';
+            phoneInput.value = u.phone ?? '';
+            roleInput.value = u.role === 'assistant' ? 'Librarian' : 'Member';
             sidInput.value = u.student_id || '—';
             typeInput.value = u.member_type || 'Student';
-            addressInput.value = u.address || '';
-
+            addressInput.value = u.address ?? '';
         } catch (error) {
-            App.toast(
-                error.message || 'Unable to load profile.',
-                'error'
-            );
+            App.toast(error.message || 'Unable to load profile.', 'error');
         }
     }
 
     await loadProfile();
 
-
-    // =========================
-    // SAVE PROFILE
-    // =========================
     profileForm.addEventListener('submit', async (event) => {
-
         event.preventDefault();
 
-        const fullName = nameInput.value.trim();
-        const phone = phoneInput.value.trim();
-        const address = addressInput.value.trim();
+        const fullName = String(nameInput.value ?? '').trim();
+        const phone = String(phoneInput.value ?? '').trim();
+        const address = String(addressInput.value ?? '').trim();
 
         if (fullName.length < 2) {
-            App.toast(
-                'Please enter your full name.',
-                'error'
-            );
-
+            App.toast('Please enter your full name.', 'error');
             nameInput.focus();
             return;
         }
 
-        const button = profileForm.querySelector(
-            'button[type="submit"], button'
-        );
-
-        const originalText = button
-            ? button.textContent
-            : 'Save changes';
+        const button = document.getElementById('saveProfileBtn');
 
         try {
+            button.disabled = true;
+            button.textContent = 'Saving...';
 
-            if (button) {
-                button.disabled = true;
-                button.textContent = 'Saving...';
-            }
-
+            // POST + both aliases makes this independent of PHP PUT parsing
+            // and any frontend field-name mismatch.
             const response = await App.req('profile', {
-                method: 'PUT',
-
+                method: 'POST',
                 body: {
                     name: fullName,
-                    phone: phone,
-                    address: address
+                    full_name: fullName,
+                    phone,
+                    address
                 }
             });
 
-            // Update current App session data
             if (response.user) {
                 App.user = response.user;
                 App.paint();
+                nameInput.value = response.user.name || response.user.full_name || fullName;
+                phoneInput.value = response.user.phone || phone;
+                addressInput.value = response.user.address || address;
             }
 
-            // Put returned values back into fields
-            if (response.user) {
-                nameInput.value =
-                    response.user.name ||
-                    response.user.full_name ||
-                    fullName;
-
-                phoneInput.value =
-                    response.user.phone || phone;
-            }
-
-            App.toast(
-                response.message ||
-                'Profile updated successfully.'
-            );
-
+            App.toast(response.message || 'Profile updated successfully.');
         } catch (error) {
-
             console.error('Profile update error:', error);
-
-            App.toast(
-                error.message ||
-                'Unable to update profile.',
-                'error'
-            );
-
+            App.toast(error.message || 'Unable to update profile.', 'error');
         } finally {
-
-            if (button) {
-                button.disabled = false;
-                button.textContent = originalText;
-            }
+            button.disabled = false;
+            button.textContent = 'Save changes';
         }
     });
 
-
-    // =========================
-    // CHANGE PASSWORD
-    // =========================
     passwordForm.addEventListener('submit', async (event) => {
-
         event.preventDefault();
 
-        const currentPassword =
-            oldPasswordInput.value;
-
-        const newPassword =
-            newPasswordInput.value;
-
-        const confirmPassword =
-            confirmPasswordInput.value;
-
+        const currentPassword = oldPasswordInput.value;
+        const newPassword = newPasswordInput.value;
+        const confirmPassword = confirmPasswordInput.value;
 
         if (!currentPassword) {
-            App.toast(
-                'Enter your current password.',
-                'error'
-            );
-
+            App.toast('Enter your current password.', 'error');
             oldPasswordInput.focus();
             return;
         }
-
-
         if (newPassword.length < 8) {
-            App.toast(
-                'New password must be at least 8 characters.',
-                'error'
-            );
-
+            App.toast('New password must be at least 8 characters.', 'error');
             newPasswordInput.focus();
             return;
         }
-
-
         if (newPassword !== confirmPassword) {
-            App.toast(
-                'New passwords do not match.',
-                'error'
-            );
-
+            App.toast('New passwords do not match.', 'error');
             confirmPasswordInput.focus();
             return;
         }
-
-
         if (currentPassword === newPassword) {
-            App.toast(
-                'New password must be different from current password.',
-                'error'
-            );
-
+            App.toast('New password must be different from current password.', 'error');
             return;
         }
 
-
-        const button = passwordForm.querySelector(
-            'button[type="submit"], button'
-        );
-
-        const originalText = button
-            ? button.textContent
-            : 'Change password';
-
+        const button = document.getElementById('changePasswordBtn');
 
         try {
+            button.disabled = true;
+            button.textContent = 'Changing...';
 
-            if (button) {
-                button.disabled = true;
-                button.textContent = 'Changing...';
-            }
-
-
-            const response = await App.req(
-                'change-password',
-                {
-                    method: 'POST',
-
-                    body: {
-                        current_password: currentPassword,
-                        new_password: newPassword
-                    }
+            const response = await App.req('change-password', {
+                method: 'POST',
+                body: {
+                    current_password: currentPassword,
+                    new_password: newPassword,
+                    confirm_password: confirmPassword
                 }
-            );
-
+            });
 
             passwordForm.reset();
-
-            App.toast(
-                response.message ||
-                'Password changed successfully.'
-            );
-
-
+            App.toast(response.message || 'Password changed successfully.');
         } catch (error) {
-
-            console.error(
-                'Password change error:',
-                error
-            );
-
-            App.toast(
-                error.message ||
-                'Unable to change password.',
-                'error'
-            );
-
+            console.error('Password change error:', error);
+            App.toast(error.message || 'Unable to change password.', 'error');
         } finally {
-
-            if (button) {
-                button.disabled = false;
-                button.textContent = originalText;
-            }
+            button.disabled = false;
+            button.textContent = 'Change password';
         }
-
     });
-
 });
-</script></body></html>
+</script>
+</body>
+</html>
