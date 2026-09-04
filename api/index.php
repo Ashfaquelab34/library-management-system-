@@ -68,10 +68,34 @@ try {
   case 'logout': requireCsrf(); if($u=currentUser())logAction((int)$u['id'],'LOGOUT','user',(int)$u['id']);$_SESSION=[];session_destroy();jsonResponse(['ok'=>true]);
   case 'delete-account': requireCsrf();$u=requireLogin();$pdo=db();$s=$pdo->prepare("UPDATE users SET status='deleted',email=CONCAT('deleted+',id,'@invalid.local') WHERE id=?");$s->execute([(int)$u['id']]);session_destroy();jsonResponse(['ok'=>true,'message'=>'Your account has been deleted.']);
   case 'change-password':
-    $u=requireLogin();requireCsrf();$d=requestJson();$old=(string)($d['current_password']??'');$new=(string)($d['new_password']??'');if(mb_strlen($new)<8)jsonResponse(['ok'=>false,'message'=>'New password must be at least 8 characters.'],422);$st=db()->prepare('SELECT password_hash FROM users WHERE id=?');$st->execute([(int)$u['id']]);$row=$st->fetch();if(!$row||!password_verify($old,$row['password_hash']))jsonResponse(['ok'=>false,'message'=>'Current password is incorrect.'],401);db()->prepare('UPDATE users SET password_hash=? WHERE id=?')->execute([password_hash($new,PASSWORD_DEFAULT),(int)$u['id']]);jsonResponse(['ok'=>true,'message'=>'Password changed successfully.']);
+    $u=requireLogin();requireCsrf();$d=requestJson();
+     $old=(string)($d['current_password']??$d['old_password']??$d['currentPassword']??'');
+     $new=(string)($d['new_password']??$d['newPassword']??'');
+     $confirm=array_key_exists('confirm_password',$d)?(string)$d['confirm_password']:(array_key_exists('confirmPassword',$d)?(string)$d['confirmPassword']:null);
+     if($old==='')jsonResponse(['ok'=>false,'message'=>'Current password is required.'],422);
+     if($new==='')jsonResponse(['ok'=>false,'message'=>'New password is required.'],422);
+     if(mb_strlen($new)<8)jsonResponse(['ok'=>false,'message'=>'New password must be at least 8 characters.'],422);
+     if($confirm!==null && $new!==$confirm)jsonResponse(['ok'=>false,'message'=>'New password and confirmation password do not match.'],422);
+     $st=db()->prepare('SELECT password_hash FROM users WHERE id=? AND status="active"');
+     $st->execute([(int)$u['id']]);
+     $row=$st->fetch();
+     if(!$row||!password_verify($old,$row['password_hash']))jsonResponse(['ok'=>false,'message'=>'Current password is incorrect.'],401);
+     if(password_verify($new,$row['password_hash']))jsonResponse(['ok'=>false,'message'=>'New password must be different from the current password.'],422);
+     db()->prepare('UPDATE users SET password_hash=? WHERE id=?')->execute([password_hash($new,PASSWORD_DEFAULT),(int)$u['id']]);
+     jsonResponse(['ok'=>true,'message'=>'Password changed successfully.']);
   case 'profile':
     $u=requireLogin(); if($method==='GET'){$s=db()->prepare('SELECT id,full_name,email,phone,role,student_id,member_type,address,status,created_at FROM users WHERE id=?');$s->execute([(int)$u['id']]);jsonResponse(['ok'=>true,'user'=>$s->fetch()]);}
-    requireCsrf();$d=requestJson();$name=clean((string)($d['name']??''));$phone=clean((string)($d['phone']??''));$address=clean((string)($d['address']??''));if(mb_strlen($name)<2)jsonResponse(['ok'=>false,'message'=>'Name is required.'],422);$s=db()->prepare('UPDATE users SET full_name=?,phone=?,address=? WHERE id=?');$s->execute([$name,$phone?:null,$address?:null,(int)$u['id']]);$_SESSION['user']['name']=$name;$_SESSION['user']['phone']=$phone;jsonResponse(['ok'=>true,'user'=>$_SESSION['user']]);
+    requireCsrf();$d=requestJson();
+     $name=clean((string)($d['name']??$d['full_name']??''));
+     $phone=clean((string)($d['phone']??''));
+     $address=clean((string)($d['address']??''));
+     if(mb_strlen($name)<2)jsonResponse(['ok'=>false,'message'=>'Name is required.'],422);
+     $s=db()->prepare('UPDATE users SET full_name=?,phone=?,address=? WHERE id=?');
+     $s->execute([$name,$phone?:null,$address?:null,(int)$u['id']]);
+     $_SESSION['user']['name']=$name;
+     $_SESSION['user']['phone']=$phone;
+     $_SESSION['user']['address']=$address;
+     jsonResponse(['ok'=>true,'message'=>'Profile updated successfully.','user'=>$_SESSION['user']]);
   case 'books':
     requireLogin();$pdo=db();$q=clean((string)($_GET['q']??''));$sql="SELECT b.id,b.isbn,b.title,b.publisher,b.published_year,b.description,b.cover_url,a.name author,c.name category,COUNT(bc.id) total_copies,SUM(bc.status='available') available_copies FROM books b JOIN authors a ON a.id=b.author_id JOIN categories c ON c.id=b.category_id LEFT JOIN book_copies bc ON bc.book_id=b.id WHERE 1=1";$args=[];if($q!==''){$sql.=' AND (b.title LIKE ? OR a.name LIKE ? OR c.name LIKE ? OR b.isbn LIKE ?)';$like="%$q%";$args=[$like,$like,$like,$like];}$sql.=' GROUP BY b.id ORDER BY b.created_at DESC';$s=$pdo->prepare($sql);$s->execute($args);jsonResponse(['ok'=>true,'books'=>$s->fetchAll()]);
   case 'authors': requireLogin('assistant'); $s=db()->query("SELECT a.*,COUNT(b.id) book_count FROM authors a LEFT JOIN books b ON b.author_id=a.id GROUP BY a.id ORDER BY a.name");jsonResponse(['ok'=>true,'authors'=>$s->fetchAll()]);
