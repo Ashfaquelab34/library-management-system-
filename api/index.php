@@ -86,13 +86,13 @@ try {
   case 'profile':
     $u=requireLogin(); if($method==='GET'){$s=db()->prepare('SELECT id,full_name,email,phone,role,student_id,member_type,address,status,created_at FROM users WHERE id=?');$s->execute([(int)$u['id']]);jsonResponse(['ok'=>true,'user'=>$s->fetch()]);}
     requireCsrf();$d=requestJson();
-     $name=clean((string)($d['name']??$d['full_name']??$d['nameInput']??''));
+     $name=clean((string)($d['name']??$d['full_name']??$d['nameInput']??$u['name']??''));
      $phone=clean((string)($d['phone']??''));
      $address=clean((string)($d['address']??''));
      if(mb_strlen($name)<2)jsonResponse(['ok'=>false,'message'=>'Name is required.'],422);
      $s=db()->prepare('UPDATE users SET full_name=?,phone=?,address=? WHERE id=?');
      $s->execute([$name,$phone?:null,$address?:null,(int)$u['id']]);
-     $_SESSION['user']['name']=$name;
+     $_SESSION['user']['name']=$name; $_SESSION['user']['full_name']=$name;
      $_SESSION['user']['phone']=$phone;
      $_SESSION['user']['address']=$address;
      jsonResponse(['ok'=>true,'message'=>'Profile updated successfully.','user'=>$_SESSION['user']]);
