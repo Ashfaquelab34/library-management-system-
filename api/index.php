@@ -86,7 +86,7 @@ try {
   case 'profile':
     $u=requireLogin(); if($method==='GET'){$s=db()->prepare('SELECT id,full_name,email,phone,role,student_id,member_type,address,status,created_at FROM users WHERE id=?');$s->execute([(int)$u['id']]);jsonResponse(['ok'=>true,'user'=>$s->fetch()]);}
     requireCsrf();$d=requestJson();
-     $name=clean((string)($d['name']??$d['full_name']??''));
+     $name=clean((string)($d['name']??$d['full_name']??$d['nameInput']??''));
      $phone=clean((string)($d['phone']??''));
      $address=clean((string)($d['address']??''));
      if(mb_strlen($name)<2)jsonResponse(['ok'=>false,'message'=>'Name is required.'],422);
