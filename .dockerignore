@@ -1,0 +1,9 @@
+.git
+.gitignore
+.env
+.env.*
+*.log
+*.zip
+README*
+.DS_Store
+Thumbs.db
